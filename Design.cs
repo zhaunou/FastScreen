@@ -174,8 +174,15 @@ namespace LocalScreenshot
                 using (GraphicsPath handle = Design.Round(new RectangleF(point.X - 4, point.Y - 4, 8, 8), 2)) g.FillPath(Brushes.White, handle);
             using (GraphicsPath badge = Design.Round(new RectangleF(173, 251, 229, 53), 10))
             using (Pen edge = new Pen(Color.FromArgb(200, 219, 240))) { g.FillPath(Brushes.White, badge); g.DrawPath(edge, badge); }
+            using (Pen check = new Pen(Color.FromArgb(22, 163, 74), 2.4f))
+            {
+                check.StartCap = check.EndCap = LineCap.Round; check.LineJoin = LineJoin.Round;
+                g.DrawLines(check, new PointF[] { new PointF(187, 278), new PointF(191, 282), new PointF(198, 273) });
+            }
             using (Font font = new Font("Segoe UI", 11))
-            using (Brush text = new SolidBrush(Design.Accent)) g.DrawString("Скриншот в один клик", font, text, 187, 267);
+            using (Brush text = new SolidBrush(Design.Accent))
+            using (StringFormat format = new StringFormat { LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap })
+                g.DrawString("Скриншот в один клик", font, text, new RectangleF(207, 251, 190, 53), format);
         }
     }
 

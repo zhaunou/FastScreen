@@ -135,8 +135,14 @@ namespace LocalScreenshot
         void AddWelcomeStep(string number, string text, int x)
         {
             Panel card = new FluentPanel { Location = new Point(x, 426), Size = new Size(402, 64), BackColor = Color.FromArgb(252, 253, 255) };
-            card.Controls.Add(Design.Text(number, 14, 18, 32, 26, 11, Design.Accent, true));
-            card.Controls.Add(Design.Text(text, 52, 18, 340, 32, 10, Design.Navy, false));
+            Label stepNumber = Design.Text(number, 0, 0, 32, card.Height, 11, Design.Accent, true);
+            Label stepText = Design.Text(text, 0, 0, 340, card.Height, 10, Design.Navy, false);
+            stepText.Width = TextRenderer.MeasureText(text, stepText.Font).Width + 4;
+            int left = (card.Width - stepNumber.Width - 12 - stepText.Width) / 2;
+            stepNumber.Left = left;
+            stepText.Left = left + stepNumber.Width + 12;
+            stepNumber.TextAlign = stepText.TextAlign = ContentAlignment.MiddleCenter;
+            card.Controls.AddRange(new Control[] { stepNumber, stepText });
             welcome.Controls.Add(card);
         }
         void ShowPage(Panel page)
