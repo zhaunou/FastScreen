@@ -209,11 +209,6 @@ namespace LocalScreenshot
             RestoreWindow();
         }
 
-        internal static bool IsNetworkPath(string path)
-        {
-            if (path.StartsWith(@"\\") || path.StartsWith("//")) return true;
-            try { return new DriveInfo(Path.GetPathRoot(Path.GetFullPath(path))).DriveType == DriveType.Network; } catch { return true; }
-        }
         void EnsureLocalFolder() { using (LocalFolderGuard guard = LocalFolderGuard.Acquire(folder, false)) { } }
         void ChooseFolder(object sender, EventArgs e)
         {
@@ -223,7 +218,6 @@ namespace LocalScreenshot
                 using (FolderBrowserDialog dialog = new FolderBrowserDialog { Description = "Папка для скриншотов на локальном диске", SelectedPath = folder })
                 {
                     if (dialog.ShowDialog(this) != DialogResult.OK) return;
-                    if (IsNetworkPath(dialog.SelectedPath)) throw new IOException("Выберите папку на локальном диске.");
                     folder = FolderSettings.Save(Path.Combine(settingsFolder, "folder.txt"), dialog.SelectedPath);
                     folderLabel.Text = folder;
                 }
