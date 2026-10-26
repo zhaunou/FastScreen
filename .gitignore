@@ -2,3 +2,4 @@
 *.pdb
 test-results/
 obj/
+dist/

@@ -1,0 +1,92 @@
+name: Build and release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fastscreen-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      artifact: ${{ steps.meta.outputs.artifact }}
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate version and release tag
+        id: meta
+        run: |
+          $version = (Get-Content VERSION -Raw).Trim()
+          if ($version -notmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') { throw 'Invalid VERSION.' }
+          if ($env:GITHUB_REF.StartsWith('refs/tags/') -and $env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag does not match VERSION.' }
+          $utf8 = New-Object Text.UTF8Encoding($false)
+          [IO.File]::AppendAllText($env:GITHUB_OUTPUT, "version=$version`n", $utf8)
+          [IO.File]::AppendAllText($env:GITHUB_OUTPUT, "artifact=FastScreen-windows-${env:GITHUB_RUN_ID}-${env:GITHUB_RUN_ATTEMPT}`n", $utf8)
+      - name: Build test executable
+        run: .\tests\build-tests.ps1
+      - name: Headless tests (no desktop screenshots)
+        run: |
+          & .\obj\FastScreen.Tests.exe --headless
+          if ($LASTEXITCODE -ne 0) { throw 'Headless tests failed.' }
+      - name: Cross-process single instance tests
+        run: .\tests\run-single-instance.ps1
+      - name: Local folders and junction tests
+        run: .\tests\run-folder-guard.ps1
+      - name: Build, check and package release
+        run: .\scripts\package.ps1
+      - name: Upload verified package
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.meta.outputs.artifact }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+          archive: true
+
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download package from this build
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ needs.build.outputs.artifact }}
+          path: artifacts
+          digest-mismatch: error
+      - name: Verify and publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.build.outputs.version }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$RELEASE_TAG" = "v$VERSION"
+          cd artifacts
+          sha256sum --check SHA256SUMS.txt
+          archive="FastScreen-$VERSION-windows.zip"
+          test -f "$archive"
+          gh release create "$RELEASE_TAG" "$archive" SHA256SUMS.txt --verify-tag --draft --title "FastScreen $VERSION" --notes-file RELEASE_NOTES.md
+          gh release edit "$RELEASE_TAG" --draft=false --latest

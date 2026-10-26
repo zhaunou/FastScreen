@@ -137,7 +137,7 @@ namespace LocalScreenshot
             }
         }
 
-        static void CheckSelectionCursor(string folder)
+        internal static void CheckSelectionCursor(string folder)
         {
             using (SelectionCursor cursor = new SelectionCursor())
             using (Bitmap image = SelectionCursor.CreateImage())
@@ -160,7 +160,7 @@ namespace LocalScreenshot
             }
         }
 
-        static void CheckScreenshotSound()
+        internal static void CheckScreenshotSound()
         {
             using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(ScreenshotSound.ResourceName))
             using (System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create())
@@ -173,7 +173,7 @@ namespace LocalScreenshot
                 Check(sound.Available, "embedded WAV preloads without fallback beep");
         }
 
-        static void CheckSystemProgramLoading()
+        internal static void CheckSystemProgramLoading()
         {
             Assembly assembly = Assembly.GetExecutingAssembly();
             object[] defaults = assembly.GetCustomAttributes(typeof(System.Runtime.InteropServices.DefaultDllImportSearchPathsAttribute), false);

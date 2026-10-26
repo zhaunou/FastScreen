@@ -23,7 +23,7 @@ $productionFiles = @('AppInfo.cs', 'Design.cs', 'LocalScreenshot.cs', 'MainWindo
 $sources = @($productionFiles | ForEach-Object { Join-Path $PSScriptRoot $_ }) + @($versionSource)
 $targetOptions = @('/target:winexe')
 if ($BuildTests) {
-    $testFiles = @('TestProgram.cs', 'BehaviorTests.cs', 'SettingsStorageTests.cs', 'SelfTest.cs')
+    $testFiles = @('TestProgram.cs', 'BehaviorTests.cs', 'SettingsStorageTests.cs', 'SelfTest.cs', 'HeadlessTests.cs')
     $sources += @($testFiles | ForEach-Object { Join-Path (Join-Path $PSScriptRoot 'tests') $_ })
     $targetOptions = @('/target:exe', '/main:LocalScreenshot.TestProgram')
 }
