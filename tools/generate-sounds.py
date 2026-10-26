@@ -74,11 +74,43 @@ def main():
                 value += gain * envelope * math.sin(2 * math.pi * frequency * u)
         return value
 
+    shutter_rng = random.Random(20261028)
+    shutter_noise = 0.0
+
+    def gentle_shutter(t):
+        nonlocal shutter_noise
+        shutter_noise = 0.88 * shutter_noise + 0.12 * shutter_rng.uniform(-1, 1)
+        value = 0.0
+        for start, frequency, gain in ((0.015, 330, 1.0), (0.075, 470, 0.45)):
+            u = t - start
+            if u >= 0:
+                envelope = (1 - math.exp(-u * 350)) * math.exp(-u * 65)
+                value += gain * envelope * (math.sin(2 * math.pi * frequency * u) + 0.4 * shutter_noise)
+        return value
+
+    def rounded_bell(t):
+        u = t - 0.015
+        if u < 0:
+            return 0.0
+        envelope = (1 - math.exp(-u * 160)) * math.exp(-u * 25)
+        return envelope * (math.sin(2 * math.pi * 740 * u) + 0.09 * math.sin(2 * math.pi * 1480 * u))
+
+    def soft_success(t):
+        u = t - 0.015
+        if u < 0:
+            return 0.0
+        envelope = (1 - math.exp(-u * 110)) * math.exp(-u * 24)
+        return envelope * sum(gain * math.sin(2 * math.pi * frequency * u)
+                              for frequency, gain in ((523.25, 1.0), (659.25, 0.5), (783.99, 0.35)))
+
     write_sound(folder / '01-camera-click.wav', 0.22, click)
     write_sound(folder / '02-soft-pop.wav', 0.30, pop)
     write_sound(folder / '03-light-chime.wav', 0.43, chime)
-    write_sound(folder / '04-soft-tap.wav', 0.28, soft_tap, level=0.18)
-    write_sound(folder / '05-warm-confirmation.wav', 0.44, warm_confirmation, level=0.18)
+    write_sound(folder / '04-soft-tap-louder.wav', 0.28, soft_tap, level=0.27)
+    write_sound(folder / '05-warm-confirmation-louder.wav', 0.44, warm_confirmation, level=0.27)
+    write_sound(folder / '06-gentle-shutter.wav', 0.28, gentle_shutter, level=0.27)
+    write_sound(folder / '07-rounded-bell.wav', 0.44, rounded_bell, level=0.27)
+    write_sound(folder / '08-soft-success.wav', 0.48, soft_success, level=0.27)
     for path in sorted(folder.glob('*.wav')):
         print(path)
 
