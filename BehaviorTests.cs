@@ -90,7 +90,49 @@ namespace LocalScreenshot
         }
         static void Render(Form form, string path)
         {
+            form.Refresh();
+            Application.DoEvents();
             using (Bitmap image = new Bitmap(form.Width, form.Height)) { form.DrawToBitmap(image, new Rectangle(Point.Empty, form.Size)); image.Save(path, System.Drawing.Imaging.ImageFormat.Png); }
+            CheckButtonEdges(form);
+        }
+
+        public static void RenderInterface(string report)
+        {
+            using (MainWindow window = new MainWindow())
+            {
+                window.Show();
+                string root = Path.GetDirectoryName(report);
+                Render(window, Path.Combine(root, "welcome-preview.png"));
+                Call(window, "ShowPage", Field(window, "workspace"));
+                Render(window, Path.Combine(root, "workspace-preview.png"));
+                Call(window, "OpenSettings");
+                Render(window, Path.Combine(root, "settings-preview.png"));
+            }
+            File.WriteAllText(report, "PASS: all three screens rendered with Windows visual styles; no black pixels on outer button edges.\r\n");
+        }
+
+        static void CheckButtonEdges(Control parent)
+        {
+            foreach (Control control in parent.Controls)
+            {
+                FluentButton button = control as FluentButton;
+                if (button != null && button.Visible)
+                    using (Bitmap pixels = new Bitmap(button.Width, button.Height))
+                    {
+                        button.DrawToBitmap(pixels, button.ClientRectangle);
+                        for (int x = 0; x < pixels.Width; x++)
+                        {
+                            Color top = pixels.GetPixel(x, 0), bottom = pixels.GetPixel(x, pixels.Height - 1);
+                            Check(top.R + top.G + top.B > 100 && bottom.R + bottom.G + bottom.B > 100, "button has no black rectangular top/bottom edge: " + button.Text);
+                        }
+                        for (int y = 0; y < pixels.Height; y++)
+                        {
+                            Color left = pixels.GetPixel(0, y), right = pixels.GetPixel(pixels.Width - 1, y);
+                            Check(left.R + left.G + left.B > 100 && right.R + right.G + right.B > 100, "button has no black rectangular side edge: " + button.Text);
+                        }
+                    }
+                CheckButtonEdges(control);
+            }
         }
 
         public static void CaptureLifecycle(string report)

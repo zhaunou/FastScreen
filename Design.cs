@@ -12,6 +12,14 @@ namespace LocalScreenshot
         public static readonly Color Muted = Color.FromArgb(91, 106, 125);
         public static readonly Color Accent = Color.FromArgb(0, 103, 192);
         public static readonly Color Surface = Color.FromArgb(238, 244, 251);
+        public static void PaintBehind(Control control, Graphics graphics)
+        {
+            FluentPanel panel = control.Parent as FluentPanel;
+            if (panel == null) { graphics.Clear(control.Parent == null ? Surface : control.Parent.BackColor); return; }
+            GraphicsState state = graphics.Save();
+            try { graphics.TranslateTransform(-control.Left, -control.Top); panel.PaintSurface(graphics); }
+            finally { graphics.Restore(state); }
+        }
         public static GraphicsPath Round(RectangleF rect, float radius)
         {
             float diameter = radius * 2;
@@ -32,8 +40,8 @@ namespace LocalScreenshot
             Button button = new FluentButton { Primary = primary, Text = text, Location = new Point(x, y), Size = new Size(width, 44), FlatStyle = FlatStyle.Flat,
                 BackColor = Color.Transparent, ForeColor = primary ? Color.White : Navy,
                 Font = new Font("Segoe UI", 10, FontStyle.Regular), Cursor = Cursors.Hand };
-            button.FlatAppearance.BorderSize = primary ? 0 : 1;
-            button.FlatAppearance.BorderColor = Color.FromArgb(222, 228, 239);
+            button.UseVisualStyleBackColor = false;
+            button.FlatAppearance.BorderSize = 0;
             return button;
         }
         [DllImport("user32.dll")] static extern bool DestroyIcon(IntPtr handle);
@@ -72,7 +80,12 @@ namespace LocalScreenshot
         public bool Primary;
         public bool Selected;
         bool hover, pressed;
-        public FluentButton() { DoubleBuffered = true; SetStyle(ControlStyles.SupportsTransparentBackColor, true); }
+        public FluentButton()
+        {
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
+                ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.SupportsTransparentBackColor | ControlStyles.Opaque, true);
+            UseVisualStyleBackColor = false;
+        }
         protected override void OnMouseEnter(EventArgs e) { hover = true; Invalidate(); base.OnMouseEnter(e); }
         protected override void OnMouseLeave(EventArgs e) { hover = pressed = false; Invalidate(); base.OnMouseLeave(e); }
         protected override void OnMouseDown(MouseEventArgs e) { pressed = true; Invalidate(); base.OnMouseDown(e); }
@@ -82,10 +95,11 @@ namespace LocalScreenshot
         protected override void OnEnabledChanged(EventArgs e) { Invalidate(); base.OnEnabledChanged(e); }
         protected override void OnPaintBackground(PaintEventArgs e)
         {
-            base.OnPaintBackground(e);
+            // The complete background is painted in OnPaint, including WM_PRINT.
         }
         protected override void OnPaint(PaintEventArgs e)
         {
+            Design.PaintBehind(this, e.Graphics);
             Graphics g = e.Graphics; g.SmoothingMode = SmoothingMode.AntiAlias;
             Color fill = Primary ? (pressed ? Color.FromArgb(0, 79, 152) : hover ? Color.FromArgb(26, 119, 205) : Design.Accent) :
                 Selected ? Color.FromArgb(220, 235, 250) : pressed ? Color.FromArgb(229, 237, 246) : hover ? Color.FromArgb(246, 249, 253) : Color.White;
@@ -108,19 +122,16 @@ namespace LocalScreenshot
         public FluentPanel() { DoubleBuffered = true; BackColor = Design.Surface; }
         protected override void OnPaintBackground(PaintEventArgs e)
         {
-            if (Parent == null) e.Graphics.Clear(Design.Surface);
-            else
-            {
-                GraphicsState state = e.Graphics.Save();
-                e.Graphics.TranslateTransform(-Left, -Top);
-                using (PaintEventArgs parentPaint = new PaintEventArgs(e.Graphics, Bounds)) InvokePaintBackground(Parent, parentPaint);
-                e.Graphics.Restore(state);
-            }
-            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            PaintSurface(e.Graphics);
+        }
+        internal void PaintSurface(Graphics graphics)
+        {
+            Design.PaintBehind(this, graphics);
+            graphics.SmoothingMode = SmoothingMode.AntiAlias;
             using (GraphicsPath path = Design.Round(new RectangleF(1, 1, Width - 3, Height - 3), 12))
             using (Brush fill = Gradient ? (Brush)new LinearGradientBrush(ClientRectangle, Color.FromArgb(235, 246, 255), Color.FromArgb(224, 231, 250), 25f) : new SolidBrush(Color.FromArgb(252, 253, 255)))
             using (Pen border = new Pen(Color.FromArgb(210, 222, 237)))
-            { e.Graphics.FillPath(fill, path); e.Graphics.DrawPath(border, path); }
+            { graphics.FillPath(fill, path); graphics.DrawPath(border, path); }
         }
     }
 

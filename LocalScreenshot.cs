@@ -17,6 +17,12 @@ namespace LocalScreenshot
             SetProcessDPIAware();
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            if (args.Length == 2 && args[0] == "--render-test")
+            {
+                try { BehaviorTests.RenderInterface(args[1]); Environment.ExitCode = 0; }
+                catch (Exception ex) { File.WriteAllText(args[1], ex.ToString()); Environment.ExitCode = 1; }
+                return;
+            }
             if (args.Length == 2 && args[0] == "--logic-test")
             {
                 try { BehaviorTests.Run(args[1]); Environment.ExitCode = 0; }
