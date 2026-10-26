@@ -9,10 +9,10 @@ import wave
 RATE = 44100
 
 
-def write_sound(path, duration, sample):
+def write_sound(path, duration, sample, level=0.32):
     values = [sample(i / RATE) for i in range(round(RATE * duration))]
     peak = max(max(abs(v) for v in values), 1e-12)
-    pcm = b''.join(struct.pack('<h', round(v / peak * 0.32 * 32767)) for v in values)
+    pcm = b''.join(struct.pack('<h', round(v / peak * level * 32767)) for v in values)
     with wave.open(str(path), 'wb') as wav:
         wav.setnchannels(1)
         wav.setsampwidth(2)
@@ -52,9 +52,33 @@ def main():
                 value += gain * (1 - math.exp(-u * 500)) * math.exp(-u * 22) * (math.sin(2 * math.pi * freq * u) + 0.12 * math.sin(2 * math.pi * freq * 3 * u))
         return value
 
+    soft_rng = random.Random(20261027)
+    filtered_noise = 0.0
+
+    def soft_tap(t):
+        nonlocal filtered_noise
+        u = t - 0.015
+        if u < 0:
+            return 0.0
+        filtered_noise = 0.92 * filtered_noise + 0.08 * soft_rng.uniform(-1, 1)
+        envelope = (1 - math.exp(-u * 260)) * math.exp(-u * 42)
+        phase = 2 * math.pi * (310 * u + 90 * (1 - math.exp(-u * 30)) / 30)
+        return envelope * (math.sin(phase) + 0.15 * filtered_noise)
+
+    def warm_confirmation(t):
+        value = 0.0
+        for start, frequency, gain in ((0.015, 440, 0.6), (0.085, 550, 1.0)):
+            u = t - start
+            if u >= 0:
+                envelope = (1 - math.exp(-u * 170)) * math.exp(-u * 25)
+                value += gain * envelope * math.sin(2 * math.pi * frequency * u)
+        return value
+
     write_sound(folder / '01-camera-click.wav', 0.22, click)
     write_sound(folder / '02-soft-pop.wav', 0.30, pop)
     write_sound(folder / '03-light-chime.wav', 0.43, chime)
+    write_sound(folder / '04-soft-tap.wav', 0.28, soft_tap, level=0.18)
+    write_sound(folder / '05-warm-confirmation.wav', 0.44, warm_confirmation, level=0.18)
     for path in sorted(folder.glob('*.wav')):
         print(path)
 
