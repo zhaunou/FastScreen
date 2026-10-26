@@ -7,7 +7,8 @@ namespace LocalScreenshot
 {
     sealed class MainWindow : Form
     {
-        readonly Panel welcome = new Panel(), workspace = new Panel(), settings = new Panel();
+        readonly Panel welcome = new FluentPanel { Gradient = true }, workspace = new Panel(), settings = new Panel();
+        readonly Button navHome, navKeys;
         readonly Label folderLabel = new Label(), statusLabel = new Label(), shortcutHint = new Label(), settingsStatus = new Label();
         readonly Button openLast;
         readonly Timer captureTimer = new Timer();
@@ -33,7 +34,7 @@ namespace LocalScreenshot
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
-            BackColor = Color.FromArgb(246, 248, 252);
+            BackColor = Design.Surface;
             appIcon = Design.CreateIcon(); Icon = appIcon;
             preferences = Preferences.Read(HotkeyFile);
             folder = Path.Combine(settingsFolder, "Screenshots");
@@ -44,10 +45,12 @@ namespace LocalScreenshot
             }
             catch (IOException) { } catch (UnauthorizedAccessException) { }
 
-            Controls.Add(Design.Text("▣   Локальный скриншот", 28, 24, 300, 32, 14, Design.Navy, true));
+            Controls.Add(Design.Text("▣", 28, 24, 28, 32, 17, Design.Accent, true));
+            Controls.Add(Design.Text("Локальный скриншот", 63, 27, 310, 32, 13, Design.Navy, true));
             Button home = Design.Button("Съёмка", 470, 19, 114, false);
             Button keys = Design.Button("Горячие клавиши", 596, 19, 174, false);
             Button hide = Design.Button("В трей  ↓", 782, 19, 110, false);
+            navHome = home; navKeys = keys;
             home.Click += delegate { ShowPage(workspace); };
             keys.Click += delegate { OpenSettings(); };
             hide.Click += delegate { HideToTray(); };
@@ -55,19 +58,19 @@ namespace LocalScreenshot
             foreach (Panel page in new Panel[] { welcome, workspace, settings })
             { page.SetBounds(0, 82, 920, 548); Controls.Add(page); }
 
-            welcome.BackColor = Design.Navy;
-            welcome.Controls.Add(Design.Text("ВАШ ЭКРАН. ВАШИ ФАЙЛЫ.", 42, 42, 460, 25, 10, Color.FromArgb(130, 237, 218), true));
-            welcome.Controls.Add(Design.Text("Поймайте момент.\nСохраните у себя.", 38, 98, 490, 132, 32, Color.White, true));
-            welcome.Controls.Add(Design.Text("Весь экран или только важная деталь.\nОдин снимок — и PNG уже на вашем компьютере.", 42, 251, 450, 65, 12, Color.FromArgb(177, 192, 218), false));
-            Button start = Design.Button("Начать съёмку   →", 42, 346, 238, true);
+            welcome.SetBounds(20, 82, 880, 528);
+            welcome.Controls.Add(Design.Text("СНИМОК ЭКРАНА · БЕЗ ОБЛАКА", 32, 38, 450, 25, 9, Design.Accent, true));
+            welcome.Controls.Add(Design.Text("Поймайте момент.\nСохраните у себя.", 28, 93, 450, 126, 29, Design.Navy, true));
+            welcome.Controls.Add(Design.Text("Весь экран или только важная деталь.\nСнимок сразу сохранится на вашем компьютере.", 32, 239, 425, 65, 11, Design.Muted, false));
+            Button start = Design.Button("Начать съёмку   →", 32, 332, 225, true);
             start.Click += delegate { ShowPage(workspace); };
             welcome.Controls.Add(start);
-            HeroArt art = new HeroArt { Location = new Point(502, 85), Size = new Size(400, 340) };
+            HeroArt art = new HeroArt { Location = new Point(465, 80), Size = new Size(385, 320) };
             welcome.Controls.Add(art);
-            welcome.Controls.Add(Design.Text("01   Выберите область", 42, 454, 250, 26, 11, Color.White, true));
-            welcome.Controls.Add(Design.Text("02   Сделайте снимок", 332, 454, 250, 26, 11, Color.White, true));
-            welcome.Controls.Add(Design.Text("03   Откройте свой PNG", 623, 454, 270, 26, 11, Color.White, true));
-            welcome.Controls.Add(Design.Text("Без аккаунтов и серверов. Снимки остаются на локальном диске.", 42, 503, 800, 26, 10, Color.FromArgb(177, 192, 218), false));
+            AddWelcomeStep("01", "Выберите область", 32);
+            AddWelcomeStep("02", "Сделайте снимок", 308);
+            AddWelcomeStep("03", "Откройте свой PNG", 584);
+            welcome.Controls.Add(Design.Text("Без аккаунтов и серверов. Ваши снимки остаются у вас.", 32, 492, 800, 24, 9, Design.Muted, false));
 
             workspace.Controls.Add(Design.Text("Что сохраним?", 32, 20, 650, 50, 26, Design.Navy, true));
             workspace.Controls.Add(Design.Text("Выберите режим. Перед съёмкой окно автоматически скроется.", 35, 77, 850, 28, 11, Design.Muted, false));
@@ -104,6 +107,11 @@ namespace LocalScreenshot
             settingsStatus.SetBounds(35, 459, 846, 68); settingsStatus.ForeColor = Design.Muted; settings.Controls.Add(settingsStatus);
 
             trayMenu.Items.Add("Открыть программу", null, delegate { RestoreWindow(); });
+            trayMenu.Font = new Font("Segoe UI", 10);
+            trayMenu.BackColor = Color.FromArgb(247, 250, 254);
+            trayMenu.Renderer = new ToolStripProfessionalRenderer(new FluentMenuColors());
+            trayMenu.ShowImageMargin = false;
+            trayMenu.Padding = new Padding(5);
             fullMenu = new ToolStripMenuItem("Весь экран", null, delegate { BeginCapture(false); });
             regionMenu = new ToolStripMenuItem("Выделить область", null, delegate { BeginCapture(true); });
             trayMenu.Items.Add(fullMenu); trayMenu.Items.Add(regionMenu);
@@ -119,7 +127,7 @@ namespace LocalScreenshot
 
         void AddCaptureCard(string eyebrow, string title, string caption, int x, bool region)
         {
-            Panel card = new Panel { Location = new Point(x, 125), Size = new Size(412, 159), BackColor = Color.White };
+            Panel card = new FluentPanel { Location = new Point(x, 125), Size = new Size(412, 159), BackColor = Color.FromArgb(252, 253, 255) };
             card.Controls.Add(Design.Text(eyebrow, 20, 15, 375, 23, 9, Design.Accent, true));
             card.Controls.Add(Design.Text(title, 17, 44, 380, 33, 19, Design.Navy, true));
             card.Controls.Add(Design.Text(caption, 20, 83, 372, 26, 10, Design.Muted, false));
@@ -127,7 +135,19 @@ namespace LocalScreenshot
             button.Height = 34; button.Click += delegate { BeginCapture(region); }; card.Controls.Add(button); workspace.Controls.Add(card);
         }
 
-        void ShowPage(Panel page) { welcome.Visible = page == welcome; workspace.Visible = page == workspace; settings.Visible = page == settings; page.BringToFront(); }
+        void AddWelcomeStep(string number, string text, int x)
+        {
+            Panel card = new FluentPanel { Location = new Point(x, 416), Size = new Size(264, 58), BackColor = Color.FromArgb(252, 253, 255) };
+            card.Controls.Add(Design.Text(number, 14, 18, 32, 26, 11, Design.Accent, true));
+            card.Controls.Add(Design.Text(text, 52, 18, 205, 28, 10, Design.Navy, false));
+            welcome.Controls.Add(card);
+        }
+        void ShowPage(Panel page)
+        {
+            welcome.Visible = page == welcome; workspace.Visible = page == workspace; settings.Visible = page == settings;
+            ((FluentButton)navHome).Selected = page == workspace; ((FluentButton)navKeys).Selected = page == settings;
+            navHome.Invalidate(); navKeys.Invalidate(); page.BringToFront();
+        }
         void OpenSettings() { fullBox.SetShortcut(preferences.Full); regionBox.SetShortcut(preferences.Region); UpdateShortcutStatus(); ShowPage(settings); }
         void UpdateShortcutStatus()
         {
@@ -152,6 +172,7 @@ namespace LocalScreenshot
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
+            Design.WindowStyle(Handle);
             if (preferences != null) { shortcuts = new GlobalShortcuts(Handle); shortcuts.Register(preferences); UpdateShortcutStatus(); }
         }
         protected override void OnHandleDestroyed(EventArgs e) { if (shortcuts != null) { shortcuts.Dispose(); shortcuts = null; } base.OnHandleDestroyed(e); }
