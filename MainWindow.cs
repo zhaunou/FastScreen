@@ -21,7 +21,7 @@ namespace LocalScreenshot
         GlobalShortcuts shortcuts;
         Preferences preferences;
         string folder, lastFile;
-        bool regionMode, capturing, returnToTray, exiting, modal;
+        bool regionMode, capturing, returnToTray, exiting, modal, activationPending;
         string HotkeyFile { get { return Path.Combine(settingsFolder, "hotkeys.txt"); } }
 
         public MainWindow()
@@ -206,6 +206,12 @@ namespace LocalScreenshot
         }
         void HideToTray() { if (!capturing && !modal) { Hide(); ShowInTaskbar = false; } }
         void RestoreWindow() { if (capturing || modal) return; ShowInTaskbar = true; WindowState = FormWindowState.Normal; Show(); Activate(); }
+        internal void RequestActivation()
+        {
+            if (capturing) { activationPending = true; return; }
+            if (modal) { Activate(); return; }
+            RestoreWindow();
+        }
 
         internal static bool IsNetworkPath(string path)
         {
@@ -255,7 +261,12 @@ namespace LocalScreenshot
                 }
             }
             catch (Exception ex) { returnToTray = false; ShowError(ex); }
-            finally { capturing = false; if (!returnToTray) { ShowPage(workspace); RestoreWindow(); } }
+            finally
+            {
+                capturing = false;
+                if (activationPending) { returnToTray = false; activationPending = false; }
+                if (!returnToTray) { ShowPage(workspace); RestoreWindow(); }
+            }
         }
         void SaveShot(Bitmap bitmap)
         {

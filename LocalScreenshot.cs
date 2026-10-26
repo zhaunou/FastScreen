@@ -4,6 +4,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
+using System.Threading;
 
 [assembly: System.Reflection.AssemblyTitle("FastScreen")]
 [assembly: System.Reflection.AssemblyProduct("FastScreen")]
@@ -38,7 +39,40 @@ namespace LocalScreenshot
                 catch (Exception ex) { File.WriteAllText(args[1], ex.ToString()); Environment.ExitCode = 1; }
                 return;
             }
-            Application.Run(new MainWindow());
+            try
+            {
+                using (SingleInstanceGate instance = SingleInstanceGate.ForCurrentUser())
+                {
+                    if (!instance.IsPrimary)
+                    {
+                        if (!instance.NotifyPrimary()) MessageBox.Show("FastScreen уже запущен. Откройте его через значок в трее.", "FastScreen");
+                        return;
+                    }
+                    using (MainWindow window = new MainWindow())
+                    {
+                        RegisteredWaitHandle activationWait = null;
+                        window.Shown += delegate
+                        {
+                            activationWait = ThreadPool.RegisterWaitForSingleObject(instance.Activation, delegate
+                            {
+                                try
+                                {
+                                    if (!window.IsDisposed && window.IsHandleCreated)
+                                        window.BeginInvoke((MethodInvoker)window.RequestActivation);
+                                }
+                                catch (InvalidOperationException) { } // The window may be closing.
+                            }, null, Timeout.Infinite, false);
+                        };
+                        try { Application.Run(window); }
+                        finally { if (activationWait != null) activationWait.Unregister(null); }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Не удалось запустить FastScreen.\n" + ex.Message, "FastScreen", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Environment.ExitCode = 1;
+            }
         }
     }
 

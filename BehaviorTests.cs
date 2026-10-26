@@ -77,7 +77,7 @@ namespace LocalScreenshot
                     Render(window, Path.Combine(Path.GetDirectoryName(report), "settings-preview.png"));
                     Call(window, "HideToTray");
                     Check(!window.Visible && !window.ShowInTaskbar && ((NotifyIcon)Field(window, "tray")).Visible, "minimize to tray");
-                    Call(window, "RestoreWindow");
+                    Call(window, "RequestActivation");
                     Check(window.Visible && window.ShowInTaskbar, "restore from tray");
                     window.Close();
                     Check(!window.IsDisposed && !window.Visible, "close button hides to tray");
@@ -177,6 +177,12 @@ namespace LocalScreenshot
                     Call(window, "CaptureNow", null, EventArgs.Empty);
                     Check(window.Visible && ((Panel)Field(window, "workspace")).Visible, "foreground capture restores workspace");
                     Check(Directory.GetFiles(root, "*.png").Length == 2, "foreground capture saved PNG");
+                    Call(window, "HideToTray");
+                    Call(window, "BeginCapture", false);
+                    Call(window, "RequestActivation");
+                    Check(!window.Visible && (bool)Field(window, "activationPending"), "activation deferred while capturing");
+                    Call(window, "CaptureNow", null, EventArgs.Empty);
+                    Check(window.Visible && !(bool)Field(window, "activationPending"), "pending activation restored window after capture");
                 }
                 File.AppendAllText(report, "PASS: WM_HOTKEY dispatch; capture while hidden in tray; hidden state preserved after save; foreground capture restores workspace; both PNG files saved.\r\n");
             }
