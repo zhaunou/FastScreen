@@ -56,7 +56,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 
 ## Тесты отдельно от приложения
 
-Пользовательский EXE не содержит тестовых классов и не поддерживает диагностические параметры. Для публикации нужен только `FastScreen-1.0.7.exe`.
+Пользовательский EXE не содержит тестовых классов и не поддерживает диагностические параметры. Для пользователей публикуется ZIP с программой, инструкцией и лицензией; тестовый EXE в него не входит.
 
 Отдельная сборка тестов:
 
@@ -79,7 +79,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\build-tests.ps1
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\run-single-instance.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\run-folder-guard.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\check-release.ps1 -Executable .\FastScreen-1.0.7.exe
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\check-release.ps1 -Executable .\FastScreen-1.0.8.exe
 ```
 
 Последняя команда проверяет отсутствие тестовых классов и старых диагностических параметров в релизе. `obj` и все EXE исключены из Git. Исходники релиза перечислены явно в `build.ps1`; тесты хранятся в `tests/` и собираются только по отдельной команде.

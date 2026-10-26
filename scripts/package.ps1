@@ -1,5 +1,8 @@
-param([string]$OutputDirectory)
+﻿param([string]$OutputDirectory)
 $ErrorActionPreference = 'Stop'
+# Windows PowerShell 5.1 requires a BOM for UTF-8 source with non-ASCII text.
+$sourceBytes = [IO.File]::ReadAllBytes($PSCommandPath)
+if ($sourceBytes.Length -lt 3 -or $sourceBytes[0] -ne 0xEF -or $sourceBytes[1] -ne 0xBB -or $sourceBytes[2] -ne 0xBF) { throw 'package.ps1 must be saved as UTF-8 with BOM.' }
 $project = Split-Path $PSScriptRoot -Parent
 $version = (Get-Content -LiteralPath (Join-Path $project 'VERSION') -Raw).Trim()
 if ($version -notmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') { throw 'Invalid release version.' }
@@ -51,6 +54,9 @@ EXE не подписан цифровой подписью. Контрольн�
 Исходники и выпуски: https://github.com/zhaunou/FastScreen
 Сообщения об уязвимостях: см. SECURITY.md.
 "@
+# Use code points so this assertion is independent of source text decoding.
+$launchHeading = -join (@(0x417, 0x430, 0x43F, 0x443, 0x441, 0x43A) | ForEach-Object { [char]$_ })
+if (-not $instructions.Contains($launchHeading)) { throw 'Russian instructions have an invalid encoding.' }
 [IO.File]::WriteAllText((Join-Path $stage 'README.txt'), $instructions, (New-Object Text.UTF8Encoding($true)))
 $payload = @('FastScreen.exe', 'LICENSE', 'README.txt', 'SECURITY.md', 'CHANGELOG.md')
 $innerSums = @($payload | ForEach-Object { (Get-FileHash -LiteralPath (Join-Path $stage $_) -Algorithm SHA256).Hash.ToLowerInvariant() + '  ' + $_ })
@@ -91,6 +97,8 @@ FastScreen $version — снимки всего экрана или выбран
 
 SHA-256 архива: **$hash**. Отдельный файл **SHA256SUMS.txt** содержит эту же сумму. Внутри ZIP есть контрольные суммы всех файлов. EXE не подписан цифровой подписью.
 "@
+$installHeading = -join (@(0x423, 0x441, 0x442, 0x430, 0x43D, 0x43E, 0x432, 0x43A, 0x430) | ForEach-Object { [char]$_ })
+if (-not $notes.Contains($installHeading)) { throw 'Russian release notes have an invalid encoding.' }
 [IO.File]::WriteAllText((Join-Path $OutputDirectory 'RELEASE_NOTES.md'), $notes, (New-Object Text.UTF8Encoding($false)))
 Write-Output "Verified package: $archive"
 Write-Output "SHA256: $hash"
