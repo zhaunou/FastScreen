@@ -113,6 +113,7 @@ namespace LocalScreenshot
     sealed class SelectionWindow : Form
     {
         readonly Bitmap desktop;
+        readonly SelectionCursor selectionCursor;
         Point origin;
         Point current;
         bool dragging;
@@ -128,7 +129,8 @@ namespace LocalScreenshot
             TopMost = true;
             ShowInTaskbar = false;
             DoubleBuffered = true;
-            Cursor = Cursors.Cross;
+            selectionCursor = new SelectionCursor();
+            Cursor = selectionCursor.Cursor;
             KeyPreview = true;
             KeyDown += delegate(object sender, KeyEventArgs e) { if (e.KeyCode == Keys.Escape) Cancel(); };
             MouseDown += delegate(object sender, MouseEventArgs e)
@@ -150,6 +152,12 @@ namespace LocalScreenshot
         }
 
         void Cancel() { DialogResult = DialogResult.Cancel; Close(); }
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            if (disposing && selectionCursor != null) selectionCursor.Dispose();
+        }
 
         protected override void OnPaint(PaintEventArgs e)
         {

@@ -16,6 +16,7 @@ namespace LocalScreenshot
         static object Call(object target, string name, params object[] args) { return target.GetType().GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic).Invoke(target, args); }
         public static void Run(string report)
         {
+            CheckSelectionCursor(Path.GetDirectoryName(report));
             string root = Path.Combine(Path.GetDirectoryName(report), "behavior-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(root);
             try
@@ -99,6 +100,7 @@ namespace LocalScreenshot
 
         public static void RenderInterface(string report)
         {
+            CheckSelectionCursor(Path.GetDirectoryName(report));
             using (MainWindow window = new MainWindow())
             {
                 window.Show();
@@ -128,6 +130,29 @@ namespace LocalScreenshot
                 Check(box.Shortcut.Encode() == Shortcut.FromKeys(Keys.Control | Keys.Alt | Keys.Shift | Keys.K).Encode(), "shortcut field captures key combination");
                 box.SetShortcut(previous);
                 CheckButtonEdges(box.Parent);
+            }
+        }
+
+        static void CheckSelectionCursor(string folder)
+        {
+            using (SelectionCursor cursor = new SelectionCursor())
+            using (Bitmap image = SelectionCursor.CreateImage())
+            using (Bitmap preview = new Bitmap(240, 100))
+            using (Graphics graphics = Graphics.FromImage(preview))
+            {
+                Check(cursor.Cursor.Handle != IntPtr.Zero, "custom color cursor created");
+                Color center = image.GetPixel(24, 24), outline = image.GetPixel(21, 10);
+                Check(center.B > 200 && center.R < 30, "crosshair center is blue");
+                Check(outline.R > 220 && outline.G > 220, "crosshair has white contrast outline");
+                Check(image.GetPixel(0, 0).A == 0, "crosshair corners transparent");
+                graphics.Clear(Color.FromArgb(30, 35, 45)); graphics.FillRectangle(Brushes.White, 120, 0, 120, 100);
+                cursor.Cursor.Draw(graphics, new Rectangle(36, 26, 48, 48));
+                cursor.Cursor.Draw(graphics, new Rectangle(156, 26, 48, 48));
+                int bluePixels = 0;
+                for (int y = 0; y < preview.Height; y++) for (int x = 0; x < preview.Width; x++)
+                { Color pixel = preview.GetPixel(x, y); if (pixel.B > 180 && pixel.R < 40 && pixel.G > 60) bluePixels++; }
+                preview.Save(Path.Combine(folder, "selection-cursor-preview.png"), System.Drawing.Imaging.ImageFormat.Png);
+                Check(bluePixels > 100, "Windows cursor renders blue on light and dark backgrounds: " + bluePixels);
             }
         }
 
@@ -190,3 +215,4 @@ namespace LocalScreenshot
         }
     }
 }
+
