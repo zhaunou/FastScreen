@@ -26,7 +26,7 @@ namespace LocalScreenshot
 
         public MainWindow()
         {
-            Text = "FastScreen";
+            Text = AppInfo.DisplayName;
             Font = new Font("Segoe UI", 10);
             AutoScaleDimensions = new SizeF(96, 96);
             AutoScaleMode = AutoScaleMode.Dpi;
@@ -46,7 +46,8 @@ namespace LocalScreenshot
             catch (IOException) { } catch (UnauthorizedAccessException) { }
 
             Controls.Add(Design.Text("▣", 28, 24, 28, 32, 17, Design.Accent, true));
-            Controls.Add(Design.Text("FastScreen", 63, 27, 290, 32, 13, Design.Navy, true));
+            Controls.Add(Design.Text("FastScreen", 63, 21, 290, 26, 13, Design.Navy, true));
+            Controls.Add(Design.Text("Версия " + AppInfo.Version, 63, 49, 290, 20, 9, Design.Muted, false));
             Button home = Design.Button("Создать скриншот", 396, 19, 188, false);
             Button keys = Design.Button("Горячие клавиши", 596, 19, 174, false);
             Button hide = Design.Button("В трей  ↓", 782, 19, 110, false);
@@ -113,7 +114,7 @@ namespace LocalScreenshot
             trayMenu.Items.Add("Горячие клавиши", null, delegate { RestoreWindow(); OpenSettings(); });
             trayMenu.Items.Add(new ToolStripSeparator());
             trayMenu.Items.Add("Выйти", null, delegate { if (!capturing && !modal) { exiting = true; Close(); } });
-            tray = new NotifyIcon { Icon = appIcon, Text = "FastScreen", ContextMenuStrip = trayMenu, Visible = true };
+            tray = new NotifyIcon { Icon = appIcon, Text = AppInfo.DisplayName, ContextMenuStrip = trayMenu, Visible = true };
             tray.DoubleClick += delegate { RestoreWindow(); };
             captureTimer.Interval = 300; captureTimer.Tick += CaptureNow;
             ShowPage(welcome);
