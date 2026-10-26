@@ -17,6 +17,12 @@ namespace LocalScreenshot
             SetProcessDPIAware();
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            if (args.Length == 2 && args[0] == "--logic-test")
+            {
+                try { BehaviorTests.Run(args[1]); Environment.ExitCode = 0; }
+                catch (Exception ex) { File.WriteAllText(args[1], ex.ToString()); Environment.ExitCode = 1; }
+                return;
+            }
             if (args.Length == 2 && args[0] == "--self-test")
             {
                 try { SelfTest.Run(args[1]); Environment.ExitCode = 0; }
@@ -58,144 +64,6 @@ namespace LocalScreenshot
             using (FileStream stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write))
                 bitmap.Save(stream, ImageFormat.Png);
             return path;
-        }
-    }
-
-    sealed class MainWindow : Form
-    {
-        readonly Label folderLabel = new Label();
-        readonly Label statusLabel = new Label();
-        readonly Button openLast = new Button();
-        readonly Timer captureTimer = new Timer();
-        readonly string settingsFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LocalScreenshot", "folder.txt");
-        string folder;
-        string lastFile;
-        bool regionMode;
-
-        public MainWindow()
-        {
-            Text = "Локальный скриншот";
-            ClientSize = new Size(560, 365);
-            FormBorderStyle = FormBorderStyle.FixedSingle;
-            MaximizeBox = false;
-            StartPosition = FormStartPosition.CenterScreen;
-            BackColor = Color.FromArgb(245, 247, 251);
-            Font = new Font("Segoe UI", 10);
-            AutoScaleMode = AutoScaleMode.Dpi;
-            KeyPreview = true;
-
-            Label title = new Label { Text = "Снимок экрана", Font = new Font("Segoe UI", 22, FontStyle.Bold), AutoSize = true, Location = new Point(24, 20) };
-            Label subtitle = new Label { Text = "Только на вашем компьютере. Без загрузки в интернет.", AutoSize = true, ForeColor = Color.FromArgb(85, 95, 115), Location = new Point(27, 72) };
-            Button full = MakeButton("Весь экран", 26, 114, 248, 58);
-            full.BackColor = Color.FromArgb(37, 99, 235);
-            full.ForeColor = Color.White;
-            Button region = MakeButton("Выделить область", 286, 114, 248, 58);
-            full.Click += delegate { BeginCapture(false); };
-            region.Click += delegate { BeginCapture(true); };
-            Label hint = new Label { Text = "Ctrl+Shift+F — весь экран  ·  Ctrl+Shift+A — область", AutoSize = true, Location = new Point(27, 184), ForeColor = Color.DimGray };
-
-            folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LocalScreenshot", "Screenshots");
-            try { if (File.Exists(settingsFile)) { string saved = File.ReadAllText(settingsFile).Trim(); if (Path.IsPathRooted(saved) && !IsNetworkPath(saved)) folder = saved; } } catch { }
-            folderLabel.SetBounds(27, 221, 390, 43);
-            folderLabel.AutoEllipsis = true;
-            UpdateFolderLabel();
-            Button choose = MakeButton("Изменить…", 427, 222, 107, 34);
-            choose.Click += ChooseFolder;
-            statusLabel.SetBounds(27, 278, 505, 38);
-            statusLabel.Text = "Готово к съёмке. Формат: PNG.";
-            statusLabel.AutoEllipsis = true;
-            openLast.SetBounds(26, 321, 248, 30);
-            openLast.Text = "Открыть последний снимок";
-            openLast.Enabled = false;
-            openLast.Click += delegate { try { System.Diagnostics.Process.Start(lastFile); } catch (Exception ex) { ShowError(ex); } };
-            Button openFolder = MakeButton("Открыть папку", 286, 321, 248, 30);
-            openFolder.Click += delegate { try { EnsureLocalFolder(); Directory.CreateDirectory(folder); System.Diagnostics.Process.Start("explorer.exe", "\"" + folder + "\""); } catch (Exception ex) { ShowError(ex); } };
-            Controls.AddRange(new Control[] { title, subtitle, full, region, hint, folderLabel, choose, statusLabel, openLast, openFolder });
-            captureTimer.Interval = 250;
-            captureTimer.Tick += CaptureNow;
-            KeyDown += delegate(object sender, KeyEventArgs e)
-            {
-                if (e.Control && e.Shift && (e.KeyCode == Keys.F || e.KeyCode == Keys.A))
-                { e.SuppressKeyPress = true; BeginCapture(e.KeyCode == Keys.A); }
-            };
-            FormClosed += delegate { captureTimer.Dispose(); };
-        }
-
-        static Button MakeButton(string text, int x, int y, int width, int height)
-        {
-            return new Button { Text = text, Location = new Point(x, y), Size = new Size(width, height), FlatStyle = FlatStyle.Flat, BackColor = Color.White, Cursor = Cursors.Hand };
-        }
-
-        internal static bool IsNetworkPath(string path)
-        {
-            if (path.StartsWith(@"\\") || path.StartsWith("//")) return true;
-            try { return new DriveInfo(Path.GetPathRoot(Path.GetFullPath(path))).DriveType == DriveType.Network; }
-            catch { return true; }
-        }
-
-        void EnsureLocalFolder()
-        {
-            if (IsNetworkPath(folder)) throw new IOException("Выберите папку на локальном диске. Сетевые папки не поддерживаются.");
-        }
-
-        void UpdateFolderLabel() { folderLabel.Text = "Папка сохранения:\n" + folder; }
-
-        void ChooseFolder(object sender, EventArgs e)
-        {
-            using (FolderBrowserDialog dialog = new FolderBrowserDialog { Description = "Папка для скриншотов на локальном диске", SelectedPath = folder })
-            {
-                if (dialog.ShowDialog(this) != DialogResult.OK) return;
-                if (IsNetworkPath(dialog.SelectedPath)) { MessageBox.Show(this, "Выберите папку на локальном диске.", Text); return; }
-                folder = dialog.SelectedPath;
-                UpdateFolderLabel();
-                try { Directory.CreateDirectory(Path.GetDirectoryName(settingsFile)); File.WriteAllText(settingsFile, folder); }
-                catch { statusLabel.Text = "Папка выбрана. Не удалось запомнить её для следующего запуска."; }
-            }
-        }
-
-        void BeginCapture(bool region)
-        {
-            if (captureTimer.Enabled || !Visible) return;
-            try { EnsureLocalFolder(); } catch (Exception ex) { ShowError(ex); return; }
-            regionMode = region;
-            Hide();
-            captureTimer.Start();
-        }
-
-        void CaptureNow(object sender, EventArgs e)
-        {
-            captureTimer.Stop();
-            try
-            {
-                using (Bitmap desktop = LocalScreenshot.Capture.Desktop())
-                {
-                    if (regionMode)
-                    {
-                        using (SelectionWindow selection = new SelectionWindow(desktop))
-                        {
-                            if (selection.ShowDialog() != DialogResult.OK) { statusLabel.Text = "Съёмка отменена."; return; }
-                            using (Bitmap crop = desktop.Clone(selection.SelectedArea, PixelFormat.Format32bppArgb)) SaveShot(crop);
-                        }
-                    }
-                    else SaveShot(desktop);
-                }
-            }
-            catch (Exception ex) { ShowError(ex); }
-            finally { Show(); Activate(); }
-        }
-
-        void SaveShot(Bitmap bitmap)
-        {
-            EnsureLocalFolder();
-            lastFile = LocalScreenshot.Capture.Save(bitmap, folder);
-            openLast.Enabled = true;
-            statusLabel.Text = "Сохранено: " + Path.GetFileName(lastFile);
-        }
-
-        void ShowError(Exception ex)
-        {
-            Show();
-            MessageBox.Show(this, "Не удалось выполнить действие.\n\n" + ex.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -264,6 +132,8 @@ namespace LocalScreenshot
         static void Check(bool condition, string name) { if (!condition) throw new Exception("FAIL: " + name); }
         public static void Run(string report)
         {
+            BehaviorTests.Run(report);
+            BehaviorTests.CaptureLifecycle(report);
             Size bounds = new Size(300, 200);
             Check(Capture.Selection(new Point(250, 150), new Point(20, 30), bounds) == new Rectangle(20, 30, 230, 120), "reverse selection");
             Check(Capture.Selection(new Point(-30, -10), new Point(350, 210), bounds) == new Rectangle(0, 0, 300, 200), "selection clipping");
@@ -287,7 +157,7 @@ namespace LocalScreenshot
                         using (Bitmap read = new Bitmap(cropped)) Check(read.Size == crop.Size && read.GetPixel(0, 0) == desktop.GetPixel(0, 0), "region PNG round trip");
                     }
                 }
-                File.WriteAllText(report, "PASS: selection in both directions; clipping; empty selection; local-only folder guard; full desktop capture; unique filenames; PNG encoding/decoding; region capture.\r\n");
+                File.AppendAllText(report, "PASS: selection in both directions; clipping; empty selection; local-only folder guard; full desktop capture; unique filenames; PNG encoding/decoding; region capture.\r\n");
             }
             finally { foreach (string path in Directory.GetFiles(testFolder)) File.Delete(path); Directory.Delete(testFolder); }
         }
