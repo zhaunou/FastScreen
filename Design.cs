@@ -172,10 +172,10 @@ namespace LocalScreenshot
             { selection.DashStyle = DashStyle.Dash; g.DrawRectangle(selection, 104, 117, 204, 110); }
             foreach (Point point in new Point[] { new Point(104, 117), new Point(308, 117), new Point(104, 227), new Point(308, 227) })
                 using (GraphicsPath handle = Design.Round(new RectangleF(point.X - 4, point.Y - 4, 8, 8), 2)) g.FillPath(Brushes.White, handle);
-            using (GraphicsPath badge = Design.Round(new RectangleF(208, 251, 184, 53), 10))
+            using (GraphicsPath badge = Design.Round(new RectangleF(173, 251, 229, 53), 10))
             using (Pen edge = new Pen(Color.FromArgb(200, 219, 240))) { g.FillPath(Brushes.White, badge); g.DrawPath(edge, badge); }
             using (Font font = new Font("Segoe UI", 11))
-            using (Brush text = new SolidBrush(Design.Accent)) g.DrawString("✓  PNG на вашем ПК", font, text, 220, 267);
+            using (Brush text = new SolidBrush(Design.Accent)) g.DrawString("Скриншот в один клик", font, text, 187, 267);
         }
     }
 
@@ -196,20 +196,31 @@ namespace LocalScreenshot
         public Shortcut Shortcut { get; private set; }
         public ShortcutBox(Shortcut value)
         {
-            DoubleBuffered = true; BackColor = Design.Surface; Padding = new Padding(14, 10, 14, 8);
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer |
+                ControlStyles.ResizeRedraw | ControlStyles.Opaque, true);
+            BackColor = Design.Surface;
             input = new Input { Owner = this, ReadOnly = true, BorderStyle = BorderStyle.None, BackColor = Color.White,
-                ForeColor = Design.Navy, Font = new Font("Segoe UI", 12), Dock = DockStyle.Fill, AccessibleName = "Горячая клавиша" };
+                ForeColor = Design.Navy, Font = new Font("Segoe UI", 12), AutoSize = false, AccessibleName = "Горячая клавиша" };
             input.GotFocus += delegate { Invalidate(); }; input.LostFocus += delegate { Invalidate(); };
             Controls.Add(input); SetShortcut(value);
         }
         public void SetShortcut(Shortcut value) { Shortcut = value; input.Text = value.ToString(); }
+        protected override void OnLayout(LayoutEventArgs e)
+        {
+            base.OnLayout(e);
+            if (input == null) return;
+            int textHeight = input.Font.Height + 3;
+            input.SetBounds(14, Math.Max(4, (Height - textHeight) / 2), Math.Max(1, Width - 28), textHeight);
+        }
+        protected override void OnPaintBackground(PaintEventArgs e) { }
         protected override void OnPaint(PaintEventArgs e)
         {
+            Design.PaintBehind(this, e.Graphics);
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             using (GraphicsPath path = Design.Round(new RectangleF(1, 1, Width - 3, Height - 3), 6))
             using (Pen border = new Pen(Color.FromArgb(195, 208, 224))) { e.Graphics.FillPath(Brushes.White, path); e.Graphics.DrawPath(border, path); }
             using (Pen line = new Pen(ContainsFocus ? Design.Accent : Color.FromArgb(139, 153, 173), ContainsFocus ? 2 : 1))
-                e.Graphics.DrawLine(line, 7, Height - 2, Width - 8, Height - 2);
+                e.Graphics.DrawLine(line, 7, Height - 3, Width - 8, Height - 3);
         }
     }
 }

@@ -5,6 +5,9 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
+[assembly: System.Reflection.AssemblyTitle("FastScreen")]
+[assembly: System.Reflection.AssemblyProduct("FastScreen")]
+
 namespace LocalScreenshot
 {
     static class Program

@@ -73,6 +73,7 @@ namespace LocalScreenshot
                     Render(window, Path.Combine(Path.GetDirectoryName(report), "workspace-preview.png"));
                     Call(window, "OpenSettings");
                     Check(settings.Visible && !workspace.Visible, "settings navigation");
+                    CheckShortcutInput(window);
                     Render(window, Path.Combine(Path.GetDirectoryName(report), "settings-preview.png"));
                     Call(window, "HideToTray");
                     Check(!window.Visible && !window.ShowInTaskbar && ((NotifyIcon)Field(window, "tray")).Visible, "minimize to tray");
@@ -106,17 +107,36 @@ namespace LocalScreenshot
                 Call(window, "ShowPage", Field(window, "workspace"));
                 Render(window, Path.Combine(root, "workspace-preview.png"));
                 Call(window, "OpenSettings");
+                CheckShortcutInput(window);
                 Render(window, Path.Combine(root, "settings-preview.png"));
             }
-            File.WriteAllText(report, "PASS: all three screens rendered with Windows visual styles; no black pixels on outer button edges.\r\n");
+            File.WriteAllText(report, "PASS: all three screens rendered with Windows visual styles; button and shortcut field edges; shortcut field input, focus, and layout.\r\n");
+        }
+
+        static void CheckShortcutInput(MainWindow window)
+        {
+            foreach (string name in new string[] { "fullBox", "regionBox" })
+            {
+                ShortcutBox box = (ShortcutBox)Field(window, name);
+                TextBox input = (TextBox)box.Controls[0];
+                Check(input.Top >= 4 && input.Bottom <= box.Height - 4 && input.Left >= 10 && input.Right <= box.Width - 10, "shortcut text fits inside rounded field");
+                input.Focus(); Application.DoEvents();
+                Check(input.Focused, "shortcut field receives keyboard focus");
+                Shortcut previous = box.Shortcut;
+                Message message = Message.Create(input.Handle, 0x100, IntPtr.Zero, IntPtr.Zero);
+                Call(input, "ProcessCmdKey", message, Keys.Control | Keys.Alt | Keys.Shift | Keys.K);
+                Check(box.Shortcut.Encode() == Shortcut.FromKeys(Keys.Control | Keys.Alt | Keys.Shift | Keys.K).Encode(), "shortcut field captures key combination");
+                box.SetShortcut(previous);
+                CheckButtonEdges(box.Parent);
+            }
         }
 
         static void CheckButtonEdges(Control parent)
         {
             foreach (Control control in parent.Controls)
             {
-                FluentButton button = control as FluentButton;
-                if (button != null && button.Visible)
+                Control button = control;
+                if ((button is FluentButton || button is ShortcutBox) && button.Visible)
                     using (Bitmap pixels = new Bitmap(button.Width, button.Height))
                     {
                         button.DrawToBitmap(pixels, button.ClientRectangle);

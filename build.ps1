@@ -1,4 +1,4 @@
-param([string]$OutputPath = (Join-Path $PSScriptRoot 'LocalScreenshot.exe'))
+param([string]$OutputPath = (Join-Path $PSScriptRoot 'FastScreen.exe'))
 $ErrorActionPreference = 'Stop'
 $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 $sources = Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.cs' | ForEach-Object { $_.FullName }

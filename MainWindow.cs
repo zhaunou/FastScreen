@@ -9,7 +9,7 @@ namespace LocalScreenshot
     {
         readonly Panel welcome = new FluentPanel { Gradient = true }, workspace = new Panel(), settings = new Panel();
         readonly Button navHome, navKeys;
-        readonly Label folderLabel = new Label(), statusLabel = new Label(), shortcutHint = new Label(), settingsStatus = new Label();
+        readonly Label folderLabel = new Label(), statusLabel = new Label(), fullShortcutHint = new Label(), regionShortcutHint = new Label(), settingsStatus = new Label();
         readonly Button openLast;
         readonly Timer captureTimer = new Timer();
         readonly NotifyIcon tray;
@@ -26,7 +26,7 @@ namespace LocalScreenshot
 
         public MainWindow()
         {
-            Text = "Локальный скриншот";
+            Text = "FastScreen";
             Font = new Font("Segoe UI", 10);
             AutoScaleDimensions = new SizeF(96, 96);
             AutoScaleMode = AutoScaleMode.Dpi;
@@ -46,8 +46,8 @@ namespace LocalScreenshot
             catch (IOException) { } catch (UnauthorizedAccessException) { }
 
             Controls.Add(Design.Text("▣", 28, 24, 28, 32, 17, Design.Accent, true));
-            Controls.Add(Design.Text("Локальный скриншот", 63, 27, 310, 32, 13, Design.Navy, true));
-            Button home = Design.Button("Съёмка", 470, 19, 114, false);
+            Controls.Add(Design.Text("FastScreen", 63, 27, 290, 32, 13, Design.Navy, true));
+            Button home = Design.Button("Создать скриншот", 396, 19, 188, false);
             Button keys = Design.Button("Горячие клавиши", 596, 19, 174, false);
             Button hide = Design.Button("В трей  ↓", 782, 19, 110, false);
             navHome = home; navKeys = keys;
@@ -59,25 +59,20 @@ namespace LocalScreenshot
             { page.SetBounds(0, 82, 920, 548); Controls.Add(page); }
 
             welcome.SetBounds(20, 82, 880, 528);
-            welcome.Controls.Add(Design.Text("СНИМОК ЭКРАНА · БЕЗ ОБЛАКА", 32, 38, 450, 25, 9, Design.Accent, true));
-            welcome.Controls.Add(Design.Text("Поймайте момент.\nСохраните у себя.", 28, 93, 450, 126, 29, Design.Navy, true));
-            welcome.Controls.Add(Design.Text("Весь экран или только важная деталь.\nСнимок сразу сохранится на вашем компьютере.", 32, 239, 425, 65, 11, Design.Muted, false));
-            Button start = Design.Button("Начать съёмку   →", 32, 332, 225, true);
+            welcome.Controls.Add(Design.Text("Скриншоты всего\nэкрана или области\nв один клик.", 28, 61, 450, 169, 27, Design.Navy, true));
+            welcome.Controls.Add(Design.Text("Скриншоты хранятся только\nна вашем компьютере.", 32, 251, 425, 65, 12, Design.Muted, false));
+            Button start = Design.Button("Создать скриншот   →", 32, 332, 245, true);
             start.Click += delegate { ShowPage(workspace); };
             welcome.Controls.Add(start);
             HeroArt art = new HeroArt { Location = new Point(465, 80), Size = new Size(385, 320) };
             welcome.Controls.Add(art);
-            AddWelcomeStep("01", "Выберите область", 32);
-            AddWelcomeStep("02", "Сделайте снимок", 308);
-            AddWelcomeStep("03", "Откройте свой PNG", 584);
-            welcome.Controls.Add(Design.Text("Без аккаунтов и серверов. Ваши снимки остаются у вас.", 32, 492, 800, 24, 9, Design.Muted, false));
+            AddWelcomeStep("01", "Выберите область или весь экран", 32);
+            AddWelcomeStep("02", "Сделайте скриншот", 450);
 
             workspace.Controls.Add(Design.Text("Что сохраним?", 32, 20, 650, 50, 26, Design.Navy, true));
             workspace.Controls.Add(Design.Text("Выберите режим. Перед съёмкой окно автоматически скроется.", 35, 77, 850, 28, 11, Design.Muted, false));
-            AddCaptureCard("01  /  ВЕСЬ ЭКРАН", "Всё в одном кадре", "Все подключённые мониторы", 34, false);
-            AddCaptureCard("02  /  ВЫДЕЛЕННАЯ ОБЛАСТЬ", "Только то, что нужно", "Выделите прямоугольник мышью", 469, true);
-            shortcutHint.SetBounds(35, 300, 850, 36); shortcutHint.ForeColor = Design.Muted;
-            workspace.Controls.Add(shortcutHint);
+            AddCaptureCard("Весь экран", "Вся область экрана", 34, false);
+            AddCaptureCard("Выделенная область", "Выделите прямоугольник мышью", 469, true);
             workspace.Controls.Add(Design.Text("ПАПКА СОХРАНЕНИЯ", 35, 358, 350, 24, 9, Design.Muted, true));
             folderLabel.SetBounds(35, 390, 650, 36); folderLabel.AutoEllipsis = true; folderLabel.Text = folder;
             workspace.Controls.Add(folderLabel);
@@ -118,28 +113,30 @@ namespace LocalScreenshot
             trayMenu.Items.Add("Горячие клавиши", null, delegate { RestoreWindow(); OpenSettings(); });
             trayMenu.Items.Add(new ToolStripSeparator());
             trayMenu.Items.Add("Выйти", null, delegate { if (!capturing && !modal) { exiting = true; Close(); } });
-            tray = new NotifyIcon { Icon = appIcon, Text = "Локальный скриншот", ContextMenuStrip = trayMenu, Visible = true };
+            tray = new NotifyIcon { Icon = appIcon, Text = "FastScreen", ContextMenuStrip = trayMenu, Visible = true };
             tray.DoubleClick += delegate { RestoreWindow(); };
             captureTimer.Interval = 300; captureTimer.Tick += CaptureNow;
             ShowPage(welcome);
             UpdateShortcutStatus();
         }
 
-        void AddCaptureCard(string eyebrow, string title, string caption, int x, bool region)
+        void AddCaptureCard(string title, string caption, int x, bool region)
         {
-            Panel card = new FluentPanel { Location = new Point(x, 125), Size = new Size(412, 159), BackColor = Color.FromArgb(252, 253, 255) };
-            card.Controls.Add(Design.Text(eyebrow, 20, 15, 375, 23, 9, Design.Accent, true));
-            card.Controls.Add(Design.Text(title, 17, 44, 380, 33, 19, Design.Navy, true));
-            card.Controls.Add(Design.Text(caption, 20, 83, 372, 26, 10, Design.Muted, false));
-            Button button = Design.Button(region ? "Выделить область   →" : "Снять весь экран   →", 20, 113, 370, true);
-            button.Height = 34; button.Click += delegate { BeginCapture(region); }; card.Controls.Add(button); workspace.Controls.Add(card);
+            Panel card = new FluentPanel { Location = new Point(x, 125), Size = new Size(412, 190), BackColor = Color.FromArgb(252, 253, 255) };
+            card.Controls.Add(Design.Text(title, 17, 18, 380, 35, 19, Design.Navy, true));
+            card.Controls.Add(Design.Text(caption, 20, 60, 372, 26, 10, Design.Muted, false));
+            Label shortcut = region ? regionShortcutHint : fullShortcutHint;
+            shortcut.SetBounds(20, 95, 372, 26); shortcut.ForeColor = Design.Accent;
+            card.Controls.Add(shortcut);
+            Button button = Design.Button(region ? "Выделить область   →" : "Снять весь экран   →", 20, 134, 370, true);
+            button.Height = 38; button.Click += delegate { BeginCapture(region); }; card.Controls.Add(button); workspace.Controls.Add(card);
         }
 
         void AddWelcomeStep(string number, string text, int x)
         {
-            Panel card = new FluentPanel { Location = new Point(x, 416), Size = new Size(264, 58), BackColor = Color.FromArgb(252, 253, 255) };
+            Panel card = new FluentPanel { Location = new Point(x, 426), Size = new Size(402, 64), BackColor = Color.FromArgb(252, 253, 255) };
             card.Controls.Add(Design.Text(number, 14, 18, 32, 26, 11, Design.Accent, true));
-            card.Controls.Add(Design.Text(text, 52, 18, 205, 28, 10, Design.Navy, false));
+            card.Controls.Add(Design.Text(text, 52, 18, 340, 32, 10, Design.Navy, false));
             welcome.Controls.Add(card);
         }
         void ShowPage(Panel page)
@@ -151,7 +148,8 @@ namespace LocalScreenshot
         void OpenSettings() { fullBox.SetShortcut(preferences.Full); regionBox.SetShortcut(preferences.Region); UpdateShortcutStatus(); ShowPage(settings); }
         void UpdateShortcutStatus()
         {
-            shortcutHint.Text = preferences.Full + "  /  весь экран     ·     " + preferences.Region + "  /  область";
+            fullShortcutHint.Text = preferences.Full.ToString();
+            regionShortcutHint.Text = preferences.Region.ToString();
             if (shortcuts == null) return;
             settingsStatus.Text = shortcuts.FullActive && shortcuts.RegionActive ? "Сочетания активны. Можно свернуть приложение в трей." :
                 "Не удалось включить: " + (!shortcuts.FullActive ? "весь экран — " + preferences.Full + ". " : "") +
