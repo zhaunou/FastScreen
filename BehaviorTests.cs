@@ -16,6 +16,7 @@ namespace LocalScreenshot
         static object Call(object target, string name, params object[] args) { return target.GetType().GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic).Invoke(target, args); }
         public static void Run(string report)
         {
+            CheckScreenshotSound();
             CheckSelectionCursor(Path.GetDirectoryName(report));
             string root = Path.Combine(Path.GetDirectoryName(report), "behavior-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(root);
@@ -154,6 +155,19 @@ namespace LocalScreenshot
                 preview.Save(Path.Combine(folder, "selection-cursor-preview.png"), System.Drawing.Imaging.ImageFormat.Png);
                 Check(bluePixels > 100, "Windows cursor renders blue on light and dark backgrounds: " + bluePixels);
             }
+        }
+
+        static void CheckScreenshotSound()
+        {
+            using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(ScreenshotSound.ResourceName))
+            using (System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create())
+            {
+                Check(stream != null, "screenshot WAV embedded in EXE");
+                string hash = BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "");
+                Check(hash == "72977A0F7B5DDBB64CC7421EBF429944D9C5BF42C29BF2B565CDFBB41EB5B8F8", "embedded sound matches selected preview 07");
+            }
+            using (ScreenshotSound sound = new ScreenshotSound())
+                Check(sound.Available, "embedded WAV preloads without fallback beep");
         }
 
         static void CheckButtonEdges(Control parent)

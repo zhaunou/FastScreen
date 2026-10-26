@@ -15,6 +15,7 @@ namespace LocalScreenshot
         readonly NotifyIcon tray;
         readonly ContextMenuStrip trayMenu = new ContextMenuStrip();
         readonly Icon appIcon;
+        readonly ScreenshotSound screenshotSound = new ScreenshotSound();
         readonly string settingsFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LocalScreenshot");
         readonly ShortcutBox fullBox, regionBox;
         readonly ToolStripMenuItem fullMenu, regionMenu;
@@ -198,6 +199,7 @@ namespace LocalScreenshot
             if (disposing)
             {
                 captureTimer.Dispose();
+                screenshotSound.Dispose();
                 if (shortcuts != null) shortcuts.Dispose();
                 if (tray != null) { tray.Visible = false; tray.Dispose(); }
                 trayMenu.Dispose(); if (appIcon != null) appIcon.Dispose();
@@ -271,6 +273,7 @@ namespace LocalScreenshot
         void SaveShot(Bitmap bitmap)
         {
             EnsureLocalFolder(); lastFile = LocalScreenshot.Capture.Save(bitmap, folder); openLast.Enabled = true;
+            screenshotSound.Play();
             statusLabel.Text = "Сохранено: " + Path.GetFileName(lastFile);
             if (returnToTray) tray.ShowBalloonTip(2500, "Снимок сохранён локально", Path.GetFileName(lastFile), ToolTipIcon.Info);
         }
