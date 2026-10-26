@@ -38,13 +38,7 @@ namespace LocalScreenshot
             BackColor = Design.Surface;
             appIcon = Design.CreateIcon(); Icon = appIcon;
             preferences = Preferences.Read(HotkeyFile);
-            folder = Path.Combine(settingsFolder, "Screenshots");
-            try
-            {
-                string saved = File.ReadAllText(Path.Combine(settingsFolder, "folder.txt")).Trim();
-                if (Path.IsPathRooted(saved) && !IsNetworkPath(saved)) folder = saved;
-            }
-            catch (IOException) { } catch (UnauthorizedAccessException) { }
+            folder = FolderSettings.Read(Path.Combine(settingsFolder, "folder.txt"), Path.Combine(settingsFolder, "Screenshots"));
 
             Controls.Add(Design.Text("▣", 28, 24, 28, 32, 17, Design.Accent, true));
             Controls.Add(Design.Text("FastScreen", 63, 21, 290, 26, 13, Design.Navy, true));
@@ -230,8 +224,8 @@ namespace LocalScreenshot
                 {
                     if (dialog.ShowDialog(this) != DialogResult.OK) return;
                     if (IsNetworkPath(dialog.SelectedPath)) throw new IOException("Выберите папку на локальном диске.");
-                    Directory.CreateDirectory(settingsFolder); File.WriteAllText(Path.Combine(settingsFolder, "folder.txt"), dialog.SelectedPath);
-                    folder = dialog.SelectedPath; folderLabel.Text = folder;
+                    folder = FolderSettings.Save(Path.Combine(settingsFolder, "folder.txt"), dialog.SelectedPath);
+                    folderLabel.Text = folder;
                 }
             }
             catch (Exception ex) { ShowError(ex); }

@@ -16,6 +16,7 @@ namespace LocalScreenshot
         static object Call(object target, string name, params object[] args) { return target.GetType().GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic).Invoke(target, args); }
         public static void Run(string report)
         {
+            SettingsStorageTests.Run(Path.GetDirectoryName(report));
             CheckSystemProgramLoading();
             CheckScreenshotSound();
             CheckSelectionCursor(Path.GetDirectoryName(report));

@@ -43,28 +43,26 @@ namespace LocalScreenshot
         public static Preferences Read(string file)
         {
             Preferences prefs = new Preferences();
-            try
+            string text;
+            if (SettingsStorage.TryRead(file, SettingsStorage.HotkeyLimit, out text))
             {
-                string[] lines = File.ReadAllLines(file);
-                if (lines.Length == 2)
+                using (StringReader reader = new StringReader(text))
                 {
-                    Shortcut full = Shortcut.Decode(lines[0]), region = Shortcut.Decode(lines[1]);
-                    if (full != null && region != null && full.Encode() != region.Encode()) { prefs.Full = full; prefs.Region = region; }
+                    string first = reader.ReadLine(), second = reader.ReadLine();
+                    if (first != null && second != null && reader.ReadLine() == null)
+                    {
+                        Shortcut full = Shortcut.Decode(first), region = Shortcut.Decode(second);
+                        if (full != null && region != null && full.Encode() != region.Encode()) { prefs.Full = full; prefs.Region = region; }
+                    }
                 }
             }
-            catch (IOException) { } catch (UnauthorizedAccessException) { }
             return prefs;
         }
         public void Save(string file)
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(file));
-            string temp = file + ".tmp";
-            try
-            {
-                File.WriteAllLines(temp, new string[] { Full.Encode(), Region.Encode() });
-                if (File.Exists(file)) File.Replace(temp, file, null); else File.Move(temp, file);
-            }
-            finally { if (File.Exists(temp)) File.Delete(temp); }
+            if (Full == null || Region == null || !Full.Valid || !Region.Valid || Full.Encode() == Region.Encode())
+                throw new ArgumentException("Для двух режимов нужны разные корректные сочетания.");
+            SettingsStorage.WriteAtomic(file, Full.Encode() + "\r\n" + Region.Encode() + "\r\n", SettingsStorage.HotkeyLimit);
         }
     }
 
