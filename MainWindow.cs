@@ -79,7 +79,7 @@ namespace LocalScreenshot
             openLast = Design.Button("Последний снимок", 35, 482, 218, false); openLast.Enabled = false;
             openLast.Click += delegate { try { System.Diagnostics.Process.Start(lastFile); } catch (Exception ex) { ShowError(ex); } };
             Button openFolder = Design.Button("Открыть папку", 267, 482, 196, false);
-            openFolder.Click += delegate { try { EnsureLocalFolder(); Directory.CreateDirectory(folder); System.Diagnostics.Process.Start(SystemPrograms.ExplorerStartInfo(folder)); } catch (Exception ex) { ShowError(ex); } };
+            openFolder.Click += delegate { try { using (LocalFolderGuard guard = LocalFolderGuard.Acquire(folder, true)) System.Diagnostics.Process.Start(SystemPrograms.ExplorerStartInfo(guard.Folder)); } catch (Exception ex) { ShowError(ex); } };
             workspace.Controls.AddRange(new Control[] { openLast, openFolder });
 
             settings.Controls.Add(Design.Text("Снимок одним сочетанием", 32, 20, 850, 50, 26, Design.Navy, true));
@@ -214,7 +214,7 @@ namespace LocalScreenshot
             if (path.StartsWith(@"\\") || path.StartsWith("//")) return true;
             try { return new DriveInfo(Path.GetPathRoot(Path.GetFullPath(path))).DriveType == DriveType.Network; } catch { return true; }
         }
-        void EnsureLocalFolder() { if (IsNetworkPath(folder)) throw new IOException("Выберите папку на локальном диске. Сетевые папки не поддерживаются."); }
+        void EnsureLocalFolder() { using (LocalFolderGuard guard = LocalFolderGuard.Acquire(folder, false)) { } }
         void ChooseFolder(object sender, EventArgs e)
         {
             modal = true;

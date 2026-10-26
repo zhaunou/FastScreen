@@ -73,6 +73,18 @@ namespace LocalScreenshot
         internal static bool TryNormalize(string value, out string path)
         {
             path = null;
+            try
+            {
+                using (LocalFolderGuard guard = LocalFolderGuard.Acquire(value, false)) { path = guard.Folder; return true; }
+            }
+            catch (IOException) { } catch (UnauthorizedAccessException) { }
+            catch (ArgumentException) { } catch (NotSupportedException) { } catch (SecurityException) { }
+            return false;
+        }
+
+        internal static bool TryNormalizeSyntax(string value, out string path)
+        {
+            path = null;
             if (String.IsNullOrWhiteSpace(value)) return false;
             string candidate = value.Trim();
             // Require a full drive-qualified path; C:folder and \folder are relative.
@@ -89,7 +101,8 @@ namespace LocalScreenshot
                         (device.Length == 4 && (device.StartsWith("COM") || device.StartsWith("LPT")) && device[3] >= '1' && device[3] <= '9')) return false;
                 }
                 string normalized = Path.GetFullPath(candidate);
-                if (new DriveInfo(Path.GetPathRoot(normalized)).DriveType == DriveType.Network || File.Exists(normalized)) return false;
+                DriveType type = new DriveInfo(Path.GetPathRoot(normalized)).DriveType;
+                if (type != DriveType.Fixed && type != DriveType.Removable && type != DriveType.Ram) return false;
                 path = normalized;
                 return true;
             }

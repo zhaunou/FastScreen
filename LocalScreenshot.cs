@@ -103,11 +103,12 @@ namespace LocalScreenshot
 
         public static string Save(Bitmap bitmap, string folder)
         {
-            Directory.CreateDirectory(folder);
-            string path = Path.Combine(folder, "Screenshot_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss-fff") + "_" + Guid.NewGuid().ToString("N").Substring(0, 6) + ".png");
-            using (FileStream stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write))
-                bitmap.Save(stream, ImageFormat.Png);
-            return path;
+            using (LocalFolderGuard guard = LocalFolderGuard.Acquire(folder, true))
+            {
+                string name = "Screenshot_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss-fff") + "_" + Guid.NewGuid().ToString("N") + ".png";
+                using (FileStream stream = guard.CreateNewFile(name)) bitmap.Save(stream, ImageFormat.Png);
+                return Path.Combine(guard.Folder, name);
+            }
         }
     }
 
