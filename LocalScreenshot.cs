@@ -8,6 +8,7 @@ using System.Threading;
 
 [assembly: System.Reflection.AssemblyTitle("FastScreen")]
 [assembly: System.Reflection.AssemblyProduct("FastScreen")]
+[assembly: DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
 
 namespace LocalScreenshot
 {

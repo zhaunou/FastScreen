@@ -16,6 +16,7 @@ namespace LocalScreenshot
         static object Call(object target, string name, params object[] args) { return target.GetType().GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic).Invoke(target, args); }
         public static void Run(string report)
         {
+            CheckSystemProgramLoading();
             CheckScreenshotSound();
             CheckSelectionCursor(Path.GetDirectoryName(report));
             string root = Path.Combine(Path.GetDirectoryName(report), "behavior-" + Guid.NewGuid().ToString("N"));
@@ -101,6 +102,7 @@ namespace LocalScreenshot
 
         public static void RenderInterface(string report)
         {
+            CheckSystemProgramLoading();
             CheckSelectionCursor(Path.GetDirectoryName(report));
             using (MainWindow window = new MainWindow())
             {
@@ -168,6 +170,30 @@ namespace LocalScreenshot
             }
             using (ScreenshotSound sound = new ScreenshotSound())
                 Check(sound.Available, "embedded WAV preloads without fallback beep");
+        }
+
+        static void CheckSystemProgramLoading()
+        {
+            Assembly assembly = Assembly.GetExecutingAssembly();
+            object[] defaults = assembly.GetCustomAttributes(typeof(System.Runtime.InteropServices.DefaultDllImportSearchPathsAttribute), false);
+            Check(defaults.Length == 1, "explicit native DLL search policy");
+            System.Runtime.InteropServices.DllImportSearchPath policy =
+                ((System.Runtime.InteropServices.DefaultDllImportSearchPathsAttribute)defaults[0]).Paths;
+            foreach (Type type in assembly.GetTypes())
+                foreach (MethodInfo method in type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly))
+                {
+                    if (method.GetCustomAttributes(typeof(System.Runtime.InteropServices.DllImportAttribute), false).Length == 0) continue;
+                    object[] overrides = method.GetCustomAttributes(typeof(System.Runtime.InteropServices.DefaultDllImportSearchPathsAttribute), false);
+                    System.Runtime.InteropServices.DllImportSearchPath effective = overrides.Length == 0 ? policy :
+                        ((System.Runtime.InteropServices.DefaultDllImportSearchPathsAttribute)overrides[0]).Paths;
+                    Check(effective == System.Runtime.InteropServices.DllImportSearchPath.System32, "native DLL limited to System32: " + method.Name);
+                }
+            string folder = Path.Combine(Path.GetTempPath(), "FastScreen folder with spaces");
+            System.Diagnostics.ProcessStartInfo start = SystemPrograms.ExplorerStartInfo(folder);
+            Check(Path.IsPathRooted(start.FileName) && File.Exists(start.FileName), "Explorer resolved to existing absolute system executable");
+            Check(start.FileName == Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe"), "Explorer path uses OS Windows folder");
+            Check(start.Arguments == "\"" + Path.GetFullPath(folder) + "\"", "folder argument preserves spaces");
+            Check(!start.UseShellExecute, "Explorer launch bypasses shell executable lookup");
         }
 
         static void CheckButtonEdges(Control parent)

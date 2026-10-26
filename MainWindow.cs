@@ -85,7 +85,7 @@ namespace LocalScreenshot
             openLast = Design.Button("Последний снимок", 35, 482, 218, false); openLast.Enabled = false;
             openLast.Click += delegate { try { System.Diagnostics.Process.Start(lastFile); } catch (Exception ex) { ShowError(ex); } };
             Button openFolder = Design.Button("Открыть папку", 267, 482, 196, false);
-            openFolder.Click += delegate { try { EnsureLocalFolder(); Directory.CreateDirectory(folder); System.Diagnostics.Process.Start("explorer.exe", "\"" + folder + "\""); } catch (Exception ex) { ShowError(ex); } };
+            openFolder.Click += delegate { try { EnsureLocalFolder(); Directory.CreateDirectory(folder); System.Diagnostics.Process.Start(SystemPrograms.ExplorerStartInfo(folder)); } catch (Exception ex) { ShowError(ex); } };
             workspace.Controls.AddRange(new Control[] { openLast, openFolder });
 
             settings.Controls.Add(Design.Text("Снимок одним сочетанием", 32, 20, 850, 50, 26, Design.Navy, true));
